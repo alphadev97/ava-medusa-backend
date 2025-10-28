@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  medusa:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medusa-backend
+    restart: always
+    ports:
+      - "9000:9000"
+    environment:
+      # Injected by Coolify (do not hardcode secrets here)
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      COOKIE_SECRET: ${COOKIE_SECRET}
+      NODE_ENV: ${NODE_ENV:-production}
