@@ -10,9 +10,31 @@ services:
     ports:
       - "9000:9000"
     environment:
-      # Injected by Coolify (do not hardcode secrets here)
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       JWT_SECRET: ${JWT_SECRET}
       COOKIE_SECRET: ${COOKIE_SECRET}
       NODE_ENV: ${NODE_ENV:-production}
+    # Optional: waits until DB and Redis are reachable before starting
+    depends_on:
+      - wait-for-deps
+
+  # Tiny helper container that ensures Postgres/Redis are available before Medusa starts
+  wait-for-deps:
+    image: alpine:3.20
+    command: >
+      sh -c "
+      echo 'Waiting for Postgres and Redis...';
+      until nc -z $(echo ${DATABASE_URL} | sed -E 's|.*://[^@]*@([^:/]+):([0-9]+).*|\1 \2|'); do
+        echo 'Waiting for database...';
+        sleep 3;
+      done;
+      until nc -z $(echo ${REDIS_URL} | sed -E 's|.*://[^@]*@([^:/]+):([0-9]+).*|\1 \2|'); do
+        echo 'Waiting for redis...';
+        sleep 3;
+      done;
+      echo 'All dependencies ready!';
+      "
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
