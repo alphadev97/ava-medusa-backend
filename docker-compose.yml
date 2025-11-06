@@ -10,31 +10,40 @@ services:
     ports:
       - "9000:9000"
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/medusa
+      REDIS_URL: redis://default:${REDIS_PASSWORD}@redis:6379/0
       JWT_SECRET: ${JWT_SECRET}
       COOKIE_SECRET: ${COOKIE_SECRET}
       NODE_ENV: ${NODE_ENV:-production}
-    # Optional: waits until DB and Redis are reachable before starting
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
     depends_on:
-      - wait-for-deps
+      - postgres
+      - redis
 
-  # Tiny helper container that ensures Postgres/Redis are available before Medusa starts
-  wait-for-deps:
-    image: alpine:3.20
-    command: >
-      sh -c "
-      echo 'Waiting for Postgres and Redis...';
-      until nc -z $(echo ${DATABASE_URL} | sed -E 's|.*://[^@]*@([^:/]+):([0-9]+).*|\1 \2|'); do
-        echo 'Waiting for database...';
-        sleep 3;
-      done;
-      until nc -z $(echo ${REDIS_URL} | sed -E 's|.*://[^@]*@([^:/]+):([0-9]+).*|\1 \2|'); do
-        echo 'Waiting for redis...';
-        sleep 3;
-      done;
-      echo 'All dependencies ready!';
-      "
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    restart: always
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: medusa
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7.2
+    container_name: redis
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redisdata:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:
+  redisdata:
